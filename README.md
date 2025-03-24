@@ -27,6 +27,6 @@ Instructions:
 
 	when correct, proceed. 
 
-3)	Run the Julia file in it's eternity. 	
+3)	Run the Julia file in it's entirety. 	
 	Depending on the speed of your pc and your selected drive, this step may take several hours. We recommend (temporary) preventing the computer from going to sleep, and if possible to run it over night so it does not interfere with other activities. 
 4)	After the script is finished, the files will be located in chosen path. In the example above this would be "D:/datafiles/benchmark_data". You may now remove the Milani_et_al_benchemark_data from this location if you please. 
