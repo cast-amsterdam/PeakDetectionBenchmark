@@ -1,67 +1,19 @@
-using MAT, Statistics, Plots, Distributions, Random, CSV, NetCDF, DataFrames,ChemStats, ProgressBars
-include("Gen1D.jl")
-include("GenPeak.jl")
-include("GenNoise.jl")
-include("GenBaseline.jl")
+using MAT, Statistics, Plots, Distributions, Random, CSV, NetCDF, DataFrames, ProgressBars
+include("Peak_mod_and_gen_functions.jl")
 
 nominal = [0.093136565,0.000809829,3.75,1,1000,0.004]
 
-E2 = [-0.25, 
--0.191299419,
-0.004912528,
-0.093136565,
-0.189831804,
-0.25]
+E2 = [-0.25, -0.191299419, 0.004912528, 0.093136565, 0.189831804, 0.25]
 
-S2 = [0.00048523,
-0.000571715,
-0.000657706,
-0.000809829,
-0.001035262,
-0.001515892,
-0.00301669]
+S2 = [0.00048523, 0.000571715, 0.000657706, 0.000809829, 0.001035262, 0.001515892, 0.00301669]
 
-S1 = [1.875,
-3.75,
-5.625,
-7.5,
-11.25]
+S1 = [1.875, 3.75, 5.625, 7.5, 11.25]
 
-PR = [0.05,
-0.1,
-0.5,
-1,
-2,
-10,
-20]
+PR = [0.05, 0.1, 0.5, 1, 2, 10, 20]
 
-KT = [1, 
-2,
-5,
-10,
-100,
-1000,
-10000]
+KT = [1, 2, 5, 10, 100, 1000, 10000]
 
-SW = [-0.02,
--0.01,
--0.009,
--0.008,
--0.007,
--0.006,
--0.004,
--0.002,
--0.001,
-0.00,
-0.001,
-0.002,
-0.004,
-0.006,
-0.007,
-0.008,
-0.009,
-0.01,
-0.02]
+SW = [-0.02, -0.01, -0.009, -0.008, -0.007, -0.006, -0.004, -0.002, -0.001, 0.00, 0.001, 0.002, 0.004, 0.006,  0.007, 0.008, 0.009, 0.01, 0.02]
 
 gridsize = 100
 
@@ -173,18 +125,12 @@ end
 
 CSV.write(pwd() * "\\simulated data\\Aux files\\stationarypeaks.csv",scnbase)
 CSV.write(pwd() * "\\simulated data\\Aux files\\movingpeaks.csv", scncomp)
-CSV.write(pwd() * "\\simulated data\\Aux files\\aux.csv", auxinfo)
+CSV.write(pwd() * "\\simulated data\\Aux files\\auxfile.csv", auxinfo)
 
 Time_1D = collect(2550:7.5:3367.5)
 Time_2D = collect(0:0.01:7.49)
 Time_tot = collect(2550:0.01:3374.99)
 
-orderSG = 4             #Start value for Sovitsky Golay window
-ModTime = 7.5           #Modulation time
-noisewindow = 100       #Window where the noise is calculated over the firs x amount of points
-NppNoises = 1000           #Amount of times the std of the noisewindow is multiplied, 3 for LOD
-Overlap = 80           #Minimum percentage of overlap of peaks to assign them to the same 2D peak
-Fit = "ModPearsonVII" # or Fit = "Gaussian"
 freq = 100
 areas = zeros(Int(size(scncomp,1)),2)
 chromas_2D = zeros()
@@ -205,45 +151,24 @@ catind = hcat(catind,tmp)
 ##Input parameters
 
 for i in ProgressBar(1:length(scncomp[:,1]))
-
-    TestTitle = "DeBug_"
-    SepTech = "GC"                                                              #"GC" or "LC"
-    DimensionMode = "2D"                                                        #Pick Chroma Mode by selecting "1D" or "2D"
-    NumSignals = 1                                                              #Number of signals to create
-    BaselineShapes_1D = 1                                                       #Simulate signal with one of the experimental baseline shapes.
-    BaselineShapes_2D = 2                                                       #Simulate signal with one of the experimental baseline shapes.
-    BaselineShapes_GCxGC = 6                                                    #real GCxGC baseline (only option == 6)
-    BaselineDrift = 0
     Peakshapes_1D = [6, 6]                                                      #See reference table above
     Peakshapes_2D = [6, 6]                                                      #See reference table above
-    Noise_sd = 0.014                                                            #Noise standaard deviatiom
-    Noise_Distribution = "Normal"                                               #Noise distribution type
-    Noise_Extra = 1                                                             #Noise extra
-    Noise_Type = 2                                                              #Noise type, see list above
-    t0_Pos_1D = 6.9                                                             #Add t0 at specified time (e.g. 3.5 min or something)
-    t0_Pos_2D = 0.1                                                             #Add t0 at specified time (e.g. 3.5 min or something)
+    Noise_sd = 0.014                                                            #Noise standard deviation
     Wdt_1D = [scnbase[i,"S1"], scncomp[i,"S1"]]                                 #half Peak width
     Wdt_2D = [scnbase[i,"S2"] .* 60, scncomp[i,"S2"] .* 60]                     #half Peak width
-    m_1D = [1000,1000]                                                          #m = some number (5 for example)
-    m_2D = [scnbase[i,"KT"], scncomp[i,"KT"]]                                   #m = some number (5 for example)
-    As_1D =  [0,0]                                                              #As = Assymetry (extend of tailing, typical values of 0.1-0.2)
-    As_2D = [scnbase[i,"E2"], scncomp[i,"E2"]]                                  #As = Assymetry (extend of tailing, typical values of 0.1-0.2)
-    Cutoff = [3.5, 3.5]                                                         #Make sure this matches with the blank measurement time you have, if this exceeds the measurement time you will see the following error:
-    Pos_1D = [scnbase[i,"loc1D"], scncomp[i,"loc1D"]]                           #peak position (tr)
-    Pos_2D = [scnbase[i,"loc2D"], scncomp[i,"loc2D"]]                           #peak position (tr)
-    PosShiftType_2D = ["Trend"]                                                 #RandomShift or Trend
-    PosShift_2D = [scnbase[i,"SW"] *-1, scncomp[i,"SW"] *-1]                    #Amound of 2D shift (in )
-    PosShiftLeftFrac_2D = [0.4]                                                 #fraction of left side asymmetry (0.0-1.0 , 0.5 is symmetrical)
+    m_1D = [1000,1000]                                                          #m = peak shape factor (1 is perfect Lorentzian, inf is perfect Gaussian if E = 0 (As)for both)
+    m_2D = [scnbase[i,"KT"], scncomp[i,"KT"]]                                   #m = peak shape factor (1 is perfect Lorentzian, inf is perfect Gaussian if E = 0 (As)for both)
+    As_1D =  [0,0]                                                              #As = Assymetry (extend of tailing, pos is tailing, neg is fronting, 0 is symmetrical)
+    As_2D = [scnbase[i,"E2"], scncomp[i,"E2"]]                                  #As = Assymetry (extend of tailing, pos is tailing, neg is fronting, 0 is symmetrical)
     gD_1D = [1, 1]                                                              #gD is the Doppler (Gaussian) width
     gD_2D = [1, 1]                                                              #gD is the Doppler (Gaussian) width
     alpha_1D = [1, 1]                                                           #Alpha is the shape constant (ratio of the Lorentzian width gL to the Doppler width gD
     alpha_2D = [1, 1]                                                           #Alpha is the shape constant (ratio of the Lorentzian width gL to the Doppler width gD
-    OutlierPercentage = 0                                                       #Percentage of generated peaks that will be a height significantly larger or smaller than the normal peak height based on the input data
-    rng = 1337                                                                  #SEED for random generation
-    Automatic = 0                                                               #-|
-    Manual = 1                                                                  # |--> automatic legacy
-    MinSpace = 100                                                              # |
-    PeakOverlap = "Yes"    
+    Pos_1D = [scnbase[i,"loc1D"], scncomp[i,"loc1D"]]                           #peak position (tr)
+    Pos_2D = [scnbase[i,"loc2D"], scncomp[i,"loc2D"]]                           #peak position (tr)
+    PosShiftType_2D = ["Trend"]                                                 #RandomShift or Trend
+    PosShift_2D = [scnbase[i,"SW"] *-1, scncomp[i,"SW"] *-1]                    #Amound of 2D shift (in sec)
+   
 
     if PeakDeformationMode .== "ConstantHeight"
         Hgt_1D = [scnbase[i,"PR"] .* Noise_sd, scncomp[i,"PR"] .* Noise_sd] .* 2016                  #Peak Height
@@ -270,18 +195,8 @@ for i in ProgressBar(1:length(scncomp[:,1]))
     x = Time_1D' .* ones(length(Pos_1D), length(Time_1D))
     fact = transpose(a .* (x .- Pos_1D))
 
-    Max_Hgt_1D,
-    Min_Hgt_1D,
-    Max_Hgt_Outlier_1D,
-    Min_Hgt_Outlier_1D,
-    Max_Wdt_1D,
-    Min_Wdt_1D,
-    Max_m_1D,
-    Min_m_1D,
-    Max_As_1D,
-    Min_As_1D,
-    Peakdata_1D =
-    calcinput(Hgt_1D, Wdt_1D, m_1D, As_1D, Pos_1D, gD_1D, alpha_1D)
+    Max_Hgt_1D, Min_Hgt_1D, Max_Hgt_Outlier_1D, Min_Hgt_Outlier_1D, Max_Wdt_1D, Min_Wdt_1D, Max_m_1D, Min_m_1D, Max_As_1D, Min_As_1D, 
+    Peakdata_1D = calcinput(Hgt_1D, Wdt_1D, m_1D, As_1D, Pos_1D, gD_1D, alpha_1D)
     # pdc[i,:]
     chroma_2D = zeros(length(Time_1D), length(Time_2D))
     for m = 1:2
@@ -303,27 +218,10 @@ for i in ProgressBar(1:length(scncomp[:,1]))
         areamod = zeros(length(PeaksS_1D),1)
         chromas = zeros(length(Time_1D), length(Time_2D))
         for k = 1:length(PeaksS_1D)
-            Max_Hgt_2D,
-            Min_Hgt_2D,
-            Max_Hgt_Outlier_2D,
-            Min_Hgt_Outlier_2D,
-            Max_Wdt_2D,
-            Min_Wdt_2D,
-            Max_m_2D,
-            Min_m_2D,
-            Max_As_2D,
-            Min_As_2D,
-            Peakdata_2D = calcinput(
-            peaks_1D[k, :],
-            Wdt_2D[m],
-            m_2D[m],
-            As_2D[m],
-            (Pos_2D[m] .+ fact[k, m]),
-            gD_2D[m],
-            alpha_2D[m],
-            )
-            peaks_2D, PeaksS_2D =
-            ManualGeneratePeaks(Peakshapes_2D[m], Time_2D, Peakdata_2D)
+            Max_Hgt_2D, Min_Hgt_2D, Max_Hgt_Outlier_2D, Min_Hgt_Outlier_2D, Max_Wdt_2D, Min_Wdt_2D, Max_m_2D,
+            Min_m_2D, Max_As_2D, Min_As_2D,Peakdata_2D = calcinput(
+            peaks_1D[k, :], Wdt_2D[m], m_2D[m], As_2D[m],(Pos_2D[m] .+ fact[k, m]),gD_2D[m],alpha_2D[m],)
+            peaks_2D, PeaksS_2D = ManualGeneratePeaks(Peakshapes_2D[m], Time_2D, Peakdata_2D)
             chromas[k, :] = PeaksS_2D
             areamod[k,1] = sum(peaks_2D./freq)
         end
