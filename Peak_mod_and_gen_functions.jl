@@ -52,7 +52,6 @@ function cntmd(pt,mdl,dp,dn)
         ym = pt.y[pt.pn .== ppoi][1]
         xm = round(xc .- i*mdl,digits = 3)
         yl = pt.pn[pt.x .== xm]
-        #poi = yl[ym-dn .< yl .< ym+dp]
         poi = yl[ym-dn .< vec(pt.y[indexin(yl,pt.pn)]) .< ym+dp]
         if length(poi) > 1
             poi = poi[findfirst(abs.(pt.y[indexin(poi,pt.pn)] .- pt.y[pt.pn .== ppoi]) .== minimum(abs.(pt.y[indexin(poi,pt.pn)] .- pt.y[pt.pn .== ppoi])))]
@@ -82,7 +81,6 @@ function cntmd(pt,mdl,dp,dn)
         ym = pt.y[pt.pn .== ppoi][1]
         xm = round(xc .+ i*mdl,digits = 6)
         yl = pt.pn[pt.x .== xm]
-        #poi = yl[ym-dn .< yl .< ym+dp]
         poi = yl[ym-dn .< vec(pt.y[indexin(yl,pt.pn)]) .< ym+dp]
         if length(poi) > 1
             poi = poi[findfirst(abs.(pt.y[indexin(poi,pt.pn)] .- pt.y[pt.pn .== ppoi]) .== minimum(abs.(pt.y[indexin(poi,pt.pn)] .- pt.y[pt.pn .== ppoi])))]
@@ -92,7 +90,7 @@ function cntmd(pt,mdl,dp,dn)
             break
         end
 
-        if (pt.hgt[pt.pn .== ppoi] > pt.hgt[pt.pn .== poi]) #.& (pt.y[pt.pn .== ppoi] > pt.y[pt.pn .== poi])
+        if (pt.hgt[pt.pn .== ppoi] > pt.hgt[pt.pn .== poi]) 
             cnt += 1
             append!(pfnd,poi[1])
         else 

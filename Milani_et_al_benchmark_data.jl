@@ -1,29 +1,34 @@
+# Required libraries for numerical computing, statistics, data manipulation, and plotting
 using MAT, Statistics, Plots, Distributions, Random, CSV, NetCDF, DataFrames, ProgressBars
+
+# Include user-defined functions for peak modeling and generation
 include("Peak_mod_and_gen_functions.jl")
 
+# Definition of nominal parameter values for the simulation
 nominal = [0.093136565,0.000809829,3.75,1,1000,0.004]
 
-E2 = [-0.25, -0.191299419, 0.004912528, 0.093136565, 0.189831804, 0.25]
+# Parameter grids for sensitivity analysis
+E2 = [-0.25, -0.191299419, 0.004912528, 0.093136565, 0.189831804, 0.25] # E factor
+S2 = [0.00048523, 0.000571715, 0.000657706, 0.000809829, 0.001035262, 0.001515892, 0.00301669] # Width 2D
+S1 = [1.875, 3.75, 5.625, 7.5, 11.25] # Width 1D
+PR = [0.05, 0.1, 0.5, 1, 2, 10, 20] # Peak Ratio
+KT = [1, 2, 5, 10, 100, 1000, 10000] # M factor
+SW = [-0.02, -0.01, -0.009, -0.008, -0.007, -0.006, -0.004, -0.002, -0.001, 0.00, 0.001, 0.002, 0.004, 0.006,  0.007, 0.008, 0.009, 0.01, 0.02] # Modulation shift
 
-S2 = [0.00048523, 0.000571715, 0.000657706, 0.000809829, 0.001035262, 0.001515892, 0.00301669]
 
-S1 = [1.875, 3.75, 5.625, 7.5, 11.25]
+gridsize = 100 # Size of the grid for 1D and 2D locations
 
-PR = [0.05, 0.1, 0.5, 1, 2, 10, 20]
-
-KT = [1, 2, 5, 10, 100, 1000, 10000]
-
-SW = [-0.02, -0.01, -0.009, -0.008, -0.007, -0.006, -0.004, -0.002, -0.001, 0.00, 0.001, 0.002, 0.004, 0.006,  0.007, 0.008, 0.009, 0.01, 0.02]
-
-gridsize = 100
-
+# List of variables and their corresponding labels
 vars = [E2,S2,S1,PR,KT,SW]
-
 varslb = ["E2","S2","S1","PR","KT","SW"]
 
-Rs_lim = 3
+Rs_lim = 3 # Limitation factor for resolution range
+
+# DataFrames to store parameter combinations
 dfpara = DataFrame(E2 = [], S2 = [], S1 = [], PR = [], KT = [],SW = [])
 df4 = DataFrame(loc1D = [], loc2D =[], E2 = [], S2 = [], S1 = [], PR = [], KT = [],SW = [])
+
+# Generation of parameter combinations varying one parameter at a time, others set to nominal values
 for i = 1:length(vars)
     para = vars[i]    
     temp = ones(length(para),length(vars))
@@ -34,7 +39,10 @@ for i = 1:length(vars)
     append!(dfpara,DataFrame(temp,[:E2,:S2,:S1,:PR,:KT,:SW]))
 end
 
+# DataFrame to store ranges of 1D and 2D locations
 dfaux = DataFrame(lb1D = [], hb1D = [], lb2D = [], hb2D = [])
+
+# Generation of 1D and 2D grids for each parameter setting
 for j = 1:size(dfpara,1)
     dt1 = 2 .* Rs_lim .* (dfpara.S1[j]+nominal[3])
     dt2 = 2 .* Rs_lim .* 60 .* (dfpara.S2[j]+nominal[2])
@@ -59,7 +67,9 @@ for j = 1:size(dfpara,1)
     df4 = vcat(df4,temp2)
 end
 
+# Creation of auxiliary variable label-value table
 temp = DataFrame(varval = [],varlb = [])
+
 for i = 1:size(vars,1)
     temp2 = DataFrame(varlb = [])
     for j = 1:size(vars[i],1)
@@ -69,10 +79,10 @@ for i = 1:size(vars,1)
     append!(temp,temp3)
 end
 
+# Normalization of grid size for consistent plotting
 dfaux = hcat(dfaux,temp)
 
 ## post gen mod to norm. grid size
-
 l1D = collect(range(2910,3090,length=gridsize))
 l2D = collect(range(1.62245316,4.37754684,length=gridsize))
 sz1 = length(l1D)
@@ -91,12 +101,12 @@ df4[:,1:2] = dftm
 
 dfaux[:,1:4] = [l1D[1] l1D[end] l2D[1] l2D[end]] .* ones(size(dfaux,1),4)
 
-
+# Stationary and moving peaks DataFrames
 dfst = DataFrame([3000 3 nominal'], [:loc1D,:loc2D,:E2,:S2,:S1,:PR,:KT,:SW])
-
 dfsw = DataFrame([[],[],[],[],[],[],[],[]],[:loc1D,:loc2D,:E2,:S2,:S1,:PR,:KT,:SW])
 dfswm = DataFrame([[],[],[],[],[],[],[],[]],[:loc1D,:loc2D,:E2,:S2,:S1,:PR,:KT,:SW])
 
+# Generation of stationary and shifted scenarios for SW parameter
 for i = 1:length(SW)
     append!(dfsw,DataFrame([ones(10000) .* [3000 3 nominal'][1:end-1]'  ones(10000) .* SW[i]],[:loc1D,:loc2D,:E2,:S2,:S1,:PR,:KT,:SW]))
     append!(dfswm,DataFrame([Matrix(dftm[1:10000,:]) ones(10000) .* (nominal[1:end-1])' ones(10000) .* SW[i]],[:loc1D,:loc2D,:E2,:S2,:S1,:PR,:KT,:SW]))
@@ -108,7 +118,7 @@ scncomp = vcat(df4, dfswm)
 auxinfo = vcat(dfaux,DataFrame([ones(size(SW)) .* Array(dfaux[1,1:4])' SW fill("SWP",length(SW))],[:lb1D,:hb1D,:lb2D,:hb2D,:varval,:varlb]))
 
 
-
+# Output folder creation for saving results
 lbls = ["Asymmetry", "Width 2D", "Width 1D", "Peak Ratio", "M factor", "Modulation shift", "parallel Modulation shift"]
 nmbrs = [6,7,5,7,7,19,19]
 if !isdir(pwd() * "\\simulated data")       
@@ -123,10 +133,12 @@ if !isdir(pwd() * "\\simulated data")
     mkdir(pwd() * "\\simulated data\\Aux files")
 end
 
+# Save scenario and auxiliary files
 CSV.write(pwd() * "\\simulated data\\Aux files\\stationarypeaks.csv",scnbase)
 CSV.write(pwd() * "\\simulated data\\Aux files\\movingpeaks.csv", scncomp)
 CSV.write(pwd() * "\\simulated data\\Aux files\\auxfile.csv", auxinfo)
 
+# Time axes definitions
 Time_1D = collect(2550:7.5:3367.5)
 Time_2D = collect(0:0.01:7.49)
 Time_tot = collect(2550:0.01:3374.99)
@@ -137,7 +149,9 @@ chromas_2D = zeros()
 pdc = zeros(20,8)
 PeakDeformationMode = "ConstantArea"
 
+# Category and value labeling for output files
 catind = DataFrame(lbl =[])
+
 for i = 1:length(nmbrs)
     append!(catind, DataFrame(lbl = fill(lbls[i],nmbrs[i].*10000)))
 end 
@@ -148,8 +162,8 @@ for i = 1:size(auxinfo,1)
 end  
 
 catind = hcat(catind,tmp)
-##Input parameters
 
+# Peak simulation loop
 for i in ProgressBar(1:length(scncomp[:,1]))
     Peakshapes_1D = [6, 6]                                                      #See reference table above
     Peakshapes_2D = [6, 6]                                                      #See reference table above
@@ -169,7 +183,7 @@ for i in ProgressBar(1:length(scncomp[:,1]))
     PosShiftType_2D = ["Trend"]                                                 #RandomShift or Trend
     PosShift_2D = [scnbase[i,"SW"] *-1, scncomp[i,"SW"] *-1]                    #Amound of 2D shift (in sec)
    
-
+	# Calculation of peak heights based on deformation mode
     if PeakDeformationMode .== "ConstantHeight"
         Hgt_1D = [scnbase[i,"PR"] .* Noise_sd, scncomp[i,"PR"] .* Noise_sd] .* 2016                  #Peak Height
         Hgt_2D = [scnbase[i,"PR"] .* Noise_sd, scncomp[i,"PR"] .* Noise_sd] .* 2016 
@@ -189,15 +203,13 @@ for i in ProgressBar(1:length(scncomp[:,1]))
         error("PeakDeformationMode Unknown")
     end
 
-
-
+	# Simulation of peak profiles and computation of 2D chromatograms
     a = PosShift_2D .* ones(length(Pos_1D), length(Time_1D))
     x = Time_1D' .* ones(length(Pos_1D), length(Time_1D))
     fact = transpose(a .* (x .- Pos_1D))
 
     Max_Hgt_1D, Min_Hgt_1D, Max_Hgt_Outlier_1D, Min_Hgt_Outlier_1D, Max_Wdt_1D, Min_Wdt_1D, Max_m_1D, Min_m_1D, Max_As_1D, Min_As_1D, 
     Peakdata_1D = calcinput(Hgt_1D, Wdt_1D, m_1D, As_1D, Pos_1D, gD_1D, alpha_1D)
-    # pdc[i,:]
     chroma_2D = zeros(length(Time_1D), length(Time_2D))
     for m = 1:2
         
@@ -230,9 +242,13 @@ for i in ProgressBar(1:length(scncomp[:,1]))
          
             chroma_2D = chroma_2D .+ chromas
     end
+	
+	# Save simulated chromatogram to CSV
     dfs = DataFrame(Time = Time_tot, Signal = reshape(chroma_2D, :,1)[:,1])
     filename = "SimChrom_" * string(i, pad = 6) * "_" * catind.lbl[i] * "_" * catind.val[i] * ".csv"
     filepwd = pwd() * "\\simulated data\\$(catind.lbl[i])\\"
     CSV.write(filepwd * filename, dfs)
 end
+
+# Save calculated areas to CSV
 CSV.write(pwd() * "\\simulated data\\Aux files\\" * "areas.csv",DataFrame(areas,[:area1,:area2]))      
